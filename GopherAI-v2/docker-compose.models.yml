@@ -1,0 +1,6 @@
+services:
+  api:
+    volumes:
+      - ${ONNXRUNTIME_SHARED_LIBRARY_PATH:?Set ONNXRUNTIME_SHARED_LIBRARY_PATH in .env}:/opt/onnxruntime/libonnxruntime.so:ro
+      - ${IMAGENET_LABELS_PATH:?Set IMAGENET_LABELS_PATH in .env}:/root/imagenet_classes.txt:ro
+      - ${MOBILENET_MODEL_PATH:?Set MOBILENET_MODEL_PATH in .env}:/root/models/mobilenetv2/mobilenetv2-7.onnx:ro

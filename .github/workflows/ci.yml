@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    paths:
+      - "GopherAI-v2/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "GopherAI-v2/**"
+      - ".github/workflows/ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: GopherAI-v2
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.4"
+          cache-dependency-path: GopherAI-v2/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: GopherAI-v2/vue-frontend/package-lock.json
+
+      - name: Test Go API
+        run: go test ./...
+
+      - name: Test MCP module
+        working-directory: GopherAI-v2/common/mcp
+        run: go test ./...
+
+      - name: Lint and build frontend
+        working-directory: GopherAI-v2/vue-frontend
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+
+      - name: Validate Compose configuration
+        run: |
+          cat > .env <<'EOF'
+          MYSQL_DATABASE=GopherAI
+          MYSQL_USER=ci-user
+          MYSQL_PASSWORD=ci-password
+          MYSQL_ROOT_PASSWORD=ci-root-password
+          RABBITMQ_USER=ci-user
+          RABBITMQ_PASSWORD=ci-password
+          JWT_KEY=ci-jwt-key
+          EOF
+          docker compose --env-file .env config --quiet
+
+      - name: Build container images
+        run: |
+          docker compose --env-file .env build api frontend mcp
+          rm .env

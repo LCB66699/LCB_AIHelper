@@ -9,6 +9,9 @@ import (
 func InitRouter() *gin.Engine {
 
 	r := gin.Default()
+	r.GET("/healthz", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
 	enterRouter := r.Group("/api/v1")
 	{
 		RegisterUserRouter(enterRouter.Group("/user"))

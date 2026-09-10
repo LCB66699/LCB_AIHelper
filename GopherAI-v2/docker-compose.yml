@@ -1,0 +1,110 @@
+name: gopherai
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-GopherAI}
+      MYSQL_USER: ${MYSQL_USER:?Set MYSQL_USER in .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+  redis:
+    image: redis/redis-stack-server:7.4.0-v8
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER in .env}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  mcp:
+    build:
+      context: ./common/mcp
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+    env_file: .env
+    environment:
+      GIN_MODE: release
+      GOPHERAI_HTTP_HOST: 0.0.0.0
+      GOPHERAI_HTTP_PORT: 9090
+      GOPHERAI_MYSQL_HOST: mysql
+      GOPHERAI_MYSQL_PORT: 3306
+      GOPHERAI_MYSQL_USER: ${MYSQL_USER}
+      GOPHERAI_MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      GOPHERAI_MYSQL_DATABASE: ${MYSQL_DATABASE:-GopherAI}
+      GOPHERAI_REDIS_HOST: redis
+      GOPHERAI_REDIS_PORT: 6379
+      GOPHERAI_RABBITMQ_HOST: rabbitmq
+      GOPHERAI_RABBITMQ_PORT: 5672
+      GOPHERAI_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      GOPHERAI_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      GOPHERAI_JWT_KEY: ${JWT_KEY:?Set JWT_KEY in .env}
+      GOPHERAI_MCP_BASE_URL: http://mcp:8081/mcp
+    volumes:
+      - uploads-data:/app/uploads
+    ports:
+      - "9090:9090"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:9090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./vue-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ > /dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:
+  uploads-data:

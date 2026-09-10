@@ -1,7 +1,9 @@
 package config
 
 import (
-	"log"
+	"fmt"
+	"os"
+	"strconv"
 
 	"github.com/BurntSushi/toml"
 )
@@ -88,18 +90,75 @@ var config *Config
 
 // InitConfig 初始化项目配置
 func InitConfig() error {
-	// 设置配置文件路径（相对于 main.go 所在的目录）
-	if _, err := toml.DecodeFile("config/config.toml", config); err != nil {
-		log.Fatal(err.Error())
-		return err
+	config = new(Config)
+	configPath := os.Getenv("GOPHERAI_CONFIG_PATH")
+	if configPath == "" {
+		configPath = "config/config.toml"
 	}
+	if _, err := toml.DecodeFile(configPath, config); err != nil {
+		return fmt.Errorf("load config %s: %w", configPath, err)
+	}
+	applyEnvironmentOverrides(config, os.Getenv)
 	return nil
 }
 
 func GetConfig() *Config {
 	if config == nil {
-		config = new(Config)
-		_ = InitConfig()
+		if err := InitConfig(); err != nil {
+			panic(err)
+		}
 	}
 	return config
+}
+
+func applyEnvironmentOverrides(conf *Config, getenv func(string) string) {
+	setString := func(key string, target *string) {
+		if value := getenv(key); value != "" {
+			*target = value
+		}
+	}
+	setInt := func(key string, target *int) {
+		if value := getenv(key); value != "" {
+			if parsed, err := strconv.Atoi(value); err == nil {
+				*target = parsed
+			}
+		}
+	}
+
+	setString("GOPHERAI_HTTP_HOST", &conf.Host)
+	setInt("GOPHERAI_HTTP_PORT", &conf.Port)
+
+	setString("GOPHERAI_MYSQL_HOST", &conf.MysqlHost)
+	setInt("GOPHERAI_MYSQL_PORT", &conf.MysqlPort)
+	setString("GOPHERAI_MYSQL_USER", &conf.MysqlUser)
+	setString("GOPHERAI_MYSQL_PASSWORD", &conf.MysqlPassword)
+	setString("GOPHERAI_MYSQL_DATABASE", &conf.MysqlDatabaseName)
+	setString("GOPHERAI_MYSQL_CHARSET", &conf.MysqlCharset)
+
+	setString("GOPHERAI_REDIS_HOST", &conf.RedisHost)
+	setInt("GOPHERAI_REDIS_PORT", &conf.RedisPort)
+	setString("GOPHERAI_REDIS_PASSWORD", &conf.RedisPassword)
+	setInt("GOPHERAI_REDIS_DB", &conf.RedisDb)
+
+	setString("GOPHERAI_RABBITMQ_HOST", &conf.RabbitmqHost)
+	setInt("GOPHERAI_RABBITMQ_PORT", &conf.RabbitmqPort)
+	setString("GOPHERAI_RABBITMQ_USERNAME", &conf.RabbitmqUsername)
+	setString("GOPHERAI_RABBITMQ_PASSWORD", &conf.RabbitmqPassword)
+	setString("GOPHERAI_RABBITMQ_VHOST", &conf.RabbitmqVhost)
+
+	setInt("GOPHERAI_JWT_EXPIRE_DURATION", &conf.ExpireDuration)
+	setString("GOPHERAI_JWT_ISSUER", &conf.Issuer)
+	setString("GOPHERAI_JWT_SUBJECT", &conf.Subject)
+	setString("GOPHERAI_JWT_KEY", &conf.Key)
+
+	setString("GOPHERAI_RAG_EMBEDDING_MODEL", &conf.RagEmbeddingModel)
+	setString("GOPHERAI_RAG_CHAT_MODEL", &conf.RagChatModelName)
+	setString("GOPHERAI_RAG_DOC_DIR", &conf.RagDocDir)
+	setString("GOPHERAI_RAG_BASE_URL", &conf.RagBaseUrl)
+	setInt("GOPHERAI_RAG_DIMENSION", &conf.RagDimension)
+
+	setString("GOPHERAI_EMAIL_ADDRESS", &conf.Email)
+	setString("GOPHERAI_EMAIL_AUTHCODE", &conf.Authcode)
+	setString("GOPHERAI_TTS_API_KEY", &conf.VoiceServiceApiKey)
+	setString("GOPHERAI_TTS_SECRET_KEY", &conf.VoiceServiceSecretKey)
 }

@@ -19,7 +19,7 @@ func initConn() {
 		"amqp://%s:%s@%s:%d/%s",
 		c.RabbitmqUsername, c.RabbitmqPassword, c.RabbitmqHost, c.RabbitmqPort, c.RabbitmqVhost,
 	)
-	log.Println("mqUrl is  " + mqUrl)
+	log.Printf("connecting to RabbitMQ at %s:%d", c.RabbitmqHost, c.RabbitmqPort)
 	var err error
 	conn, err = amqp.Dial(mqUrl)
 	if err != nil {

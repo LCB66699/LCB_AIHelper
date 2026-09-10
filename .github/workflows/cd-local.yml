@@ -1,0 +1,40 @@
+name: Deploy To Local Runner
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, gopherai-local]
+    defaults:
+      run:
+        working-directory: GopherAI-v2
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load local deployment environment
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GOPHERAI_LOCAL_ENV_FILE)) {
+            throw "Set GOPHERAI_LOCAL_ENV_FILE on the runner to an absolute path outside the checkout workspace."
+          }
+          if (-not (Test-Path -LiteralPath $env:GOPHERAI_LOCAL_ENV_FILE)) {
+            throw "GOPHERAI_LOCAL_ENV_FILE does not exist: $env:GOPHERAI_LOCAL_ENV_FILE"
+          }
+          Copy-Item -LiteralPath $env:GOPHERAI_LOCAL_ENV_FILE -Destination .env -Force
+
+      - name: Run local CI
+        shell: pwsh
+        run: ./scripts/ci-local.ps1
+
+      - name: Deploy locally
+        shell: pwsh
+        run: ./scripts/deploy-local.ps1 -SkipBuild -SkipChecks
+
+      - name: Remove copied environment file
+        if: always()
+        shell: pwsh
+        run: Remove-Item -LiteralPath .env -Force -ErrorAction SilentlyContinue

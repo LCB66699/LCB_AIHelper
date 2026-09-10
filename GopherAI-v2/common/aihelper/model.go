@@ -332,7 +332,10 @@ func NewMCPModel(ctx context.Context, username string) (*MCPModel, error) {
 		return nil, fmt.Errorf("create mcp model failed: %v", err)
 	}
 
-	mcpBaseURL := "http://localhost:8081/mcp"
+	mcpBaseURL := os.Getenv("GOPHERAI_MCP_BASE_URL")
+	if mcpBaseURL == "" {
+		mcpBaseURL = "http://localhost:8081/mcp"
+	}
 
 	return &MCPModel{
 		llm:        llm,
