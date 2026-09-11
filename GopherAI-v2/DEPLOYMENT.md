@@ -25,6 +25,8 @@ Run the local quality gate before deployment:
 
 It runs Go tests, containerized frontend lint/build, Compose validation, and image builds. Stop the stack while preserving data with `./scripts/stop-local.ps1`; add `-RemoveData` only when intentionally deleting local MySQL, Redis, RabbitMQ, and uploaded-file volumes. On a self-hosted runner, the script automatically uses `GOPHERAI_LOCAL_ENV_FILE`; otherwise pass `-EnvFile <path>`.
 
-## GitHub Actions CD
+## GitHub Actions CI/CD
 
-`.github/workflows/ci.yml` validates every push and pull request. `.github/workflows/cd-local.yml` is intentionally manual and expects a self-hosted GitHub Actions runner labeled `gopherai-local` on the target machine. Set the runner-level `GOPHERAI_LOCAL_ENV_FILE` variable to an absolute `.env` path outside the checkout workspace; the workflow copies it only for deployment and removes the working copy afterward. It is never copied to GitHub.
+`.github/workflows/ci.yml` validates every push and pull request. After a successful push to `main`, `.github/workflows/cd-local.yml` automatically deploys the exact tested commit on a self-hosted GitHub Actions runner labeled `gopherai-local` on the target machine. It can also be started manually with `workflow_dispatch`.
+
+Set the runner-level `GOPHERAI_LOCAL_ENV_FILE` variable to an absolute `.env` path outside the checkout workspace; the workflow copies it only for deployment and removes the working copy afterward. It is never copied to GitHub. The runner must have Docker Desktop, Docker Compose, and permission to bind ports 8080 and 9090.

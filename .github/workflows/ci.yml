@@ -16,6 +16,8 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      GOPROXY: https://goproxy.cn,direct
     defaults:
       run:
         working-directory: GopherAI-v2
