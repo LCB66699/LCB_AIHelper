@@ -46,11 +46,15 @@ services:
   mcp:
     build:
       context: ./common/mcp
+      args:
+        GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
     restart: unless-stopped
 
   api:
     build:
       context: .
+      args:
+        GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
     env_file: .env
     environment:
       GIN_MODE: release
